@@ -1,0 +1,55 @@
+# MCP Memory Server Container
+# Optimized for small footprint (target: <500MB total)
+
+FROM python:3.12-slim-bookworm
+
+LABEL maintainer="Tailor Made <hello@tailormade.mx>"
+LABEL description="MCP Memory Server - Persistent memory for IDE assistants"
+LABEL version="0.1.0"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 mcp
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for caching
+COPY pyproject.toml ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e .
+
+# Pre-download embedding model (saves startup time)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
+# Copy application code
+COPY src/ ./src/
+COPY README.md ./
+
+# Install the package
+RUN pip install --no-cache-dir -e .
+
+# Create data directory
+RUN mkdir -p /data && chown -R mcp:mcp /data
+
+# Switch to non-root user
+USER mcp
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV MCP_MEMORY_DB=/data/memory.db
+
+# Expose no ports (stdio-based MCP)
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "from mcp_memory import Memory; Memory().stats()" || exit 1
+
+# Entry point
+ENTRYPOINT ["mcp-memory-server"]
+CMD ["serve"]

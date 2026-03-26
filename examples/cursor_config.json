@@ -1,0 +1,19 @@
+{
+  "//": "MCP Memory Server Configuration for Cursor IDE",
+  "//": "Place this in your Cursor settings or .cursor/mcp_settings.json",
+  
+  "mcpServers": {
+    "memory": {
+      "command": "podman",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "~/.mcp-memory:/data",
+        "mcp-memory-server"
+      ],
+      "env": {}
+    }
+  }
+}

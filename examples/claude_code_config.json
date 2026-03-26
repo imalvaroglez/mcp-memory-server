@@ -1,0 +1,14 @@
+{
+  "//": "MCP Memory Server Configuration for Claude Code",
+  "//": "Add to your Claude Code settings or mcp_settings.json",
+  
+  "mcpServers": {
+    "memory": {
+      "command": "mcp-memory-server",
+      "args": ["serve"],
+      "env": {
+        "MCP_MEMORY_DB": "~/.mcp-memory/memory.db"
+      }
+    }
+  }
+}
