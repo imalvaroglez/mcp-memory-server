@@ -1,0 +1,1 @@
+{"id":"eb267497-ec53-4a4a-8b77-745383324d06","ts":"2026-03-26T17:02:38.489Z","path":"/Users/imalvaroglez/Documents/GitHub/mcp-memory-server/AGENTS.md","version":"1.0.0","taskID":"4c1e1dc1-1401-4429-8c24-35e1984c0beb"}

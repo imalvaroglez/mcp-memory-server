@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "mcp-memory-server"
-version = "0.1.0"
-description = "Local MCP server for persistent IDE assistant memory"
-authors = ["Tailor Made <hello@tailormade.mx>"]
+version = "0.2.0"
+description = "Local MCP server for persistent IDE assistant memory with local LLM reasoning and TurboQuant compression"
+authors = ["Alvaro Gonzalez <alvaroglezz@hotmail.com>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/imalvaroglez/mcp-memory-server"
 repository = "https://github.com/imalvaroglez/mcp-memory-server"
-keywords = ["mcp", "memory", "ide", "assistant", "local", "embeddings"]
+keywords = ["mcp", "memory", "ide", "assistant", "local", "embeddings", "llm", "quantization", "turboquant"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -26,6 +26,8 @@ sentence-transformers = ">=2.2.0"
 sqlite-vss = ">=0.1.0"
 numpy = ">=1.24.0"
 pydantic = ">=2.0.0"
+llama-cpp-python = ">=0.3.0"
+huggingface-hub = ">=0.20.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"

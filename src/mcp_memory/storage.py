@@ -3,6 +3,9 @@ SQLite-based storage for memory vectors.
 
 Uses sqlite-vss for vector similarity search when available,
 falls back to naive numpy-based search.
+
+Supports TurboQuant-compressed embeddings for space-efficient storage
+and fast approximate similarity search.
 """
 
 import json
@@ -49,6 +52,7 @@ class MemoryStorage:
                 id TEXT PRIMARY KEY,
                 text TEXT NOT NULL,
                 embedding BLOB NOT NULL,
+                compressed_embedding BLOB,
                 metadata TEXT DEFAULT '{}',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -59,9 +63,31 @@ class MemoryStorage:
             CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(json_extract(metadata, '$.type'));
         """)
         conn.commit()
+        self._migrate_add_compressed_column()
         logger.info(f"Database initialized at {self.db_path}")
+
+    def _migrate_add_compressed_column(self):
+        """Add compressed_embedding column if missing (migration for existing DBs)."""
+        try:
+            cursor = self.conn.execute("PRAGMA table_info(memories)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "compressed_embedding" not in columns:
+                self.conn.execute(
+                    "ALTER TABLE memories ADD COLUMN compressed_embedding BLOB"
+                )
+                self.conn.commit()
+                logger.info("Migrated database: added compressed_embedding column")
+        except Exception as e:
+            logger.warning(f"Migration check failed: {e}")
     
-    def store(self, id: str, text: str, embedding: list[float], metadata: dict) -> str:
+    def store(
+        self,
+        id: str,
+        text: str,
+        embedding: list[float],
+        metadata: dict,
+        compressed_embedding: Optional[bytes] = None,
+    ) -> str:
         """
         Store a memory.
         
@@ -70,6 +96,7 @@ class MemoryStorage:
             text: Memory text content
             embedding: Embedding vector
             metadata: Additional metadata (project, type, etc.)
+            compressed_embedding: Optional TurboQuant-compressed embedding
             
         Returns:
             Memory ID
@@ -79,10 +106,11 @@ class MemoryStorage:
         
         self.conn.execute(
             """
-            INSERT OR REPLACE INTO memories (id, text, embedding, metadata, updated_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT OR REPLACE INTO memories
+                (id, text, embedding, compressed_embedding, metadata, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
-            (id, text, embedding_bytes, metadata_json)
+            (id, text, embedding_bytes, compressed_embedding, metadata_json)
         )
         self.conn.commit()
         logger.debug(f"Stored memory {id}")
@@ -190,7 +218,95 @@ class MemoryStorage:
         
         rows = self.conn.execute(sql, params).fetchall()
         return [self._row_to_dict(row) for row in rows]
-    
+
+    def search_compressed(
+        self,
+        query_compressed: bytes,
+        compressor: "TurboQuantCompressor",
+        top_k: int = 5,
+        filter: Optional[dict] = None,
+    ) -> list[dict]:
+        """Search using TurboQuant-compressed embeddings.
+
+        Falls back to full-precision search for memories that don't have
+        compressed embeddings.
+
+        Args:
+            query_compressed: TurboQuant-compressed query vector.
+            compressor: TurboQuantCompressor instance for similarity.
+            top_k: Maximum results.
+            filter: Optional metadata filter.
+
+        Returns:
+            List of memories with similarity scores.
+        """
+        sql = "SELECT * FROM memories"
+        params: list = []
+
+        if filter:
+            conditions = []
+            if "project" in filter:
+                conditions.append("json_extract(metadata, '$.project') = ?")
+                params.append(filter["project"])
+            if "type" in filter:
+                conditions.append("json_extract(metadata, '$.type') = ?")
+                params.append(filter["type"])
+            if conditions:
+                sql += " WHERE " + " AND ".join(conditions)
+
+        rows = self.conn.execute(sql, params).fetchall()
+
+        results = []
+        for row in rows:
+            result = self._row_to_dict(row)
+            compressed = row["compressed_embedding"]
+            if compressed:
+                similarity = compressor.similarity(query_compressed, compressed)
+            else:
+                # Fallback: decompress query and use full-precision
+                from .quantization import turbo_decompress
+
+                query_vec = turbo_decompress(query_compressed)
+                stored_vec = np.frombuffer(row["embedding"], dtype=np.float32)
+                norm_q = np.linalg.norm(query_vec)
+                norm_s = np.linalg.norm(stored_vec)
+                similarity = (
+                    float(np.dot(query_vec, stored_vec) / (norm_q * norm_s))
+                    if norm_q > 0 and norm_s > 0
+                    else 0.0
+                )
+            result["similarity"] = similarity
+            results.append(result)
+
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return results[:top_k]
+
+    def update_compressed_embedding(
+        self, id: str, compressed_embedding: bytes
+    ) -> bool:
+        """Update the compressed embedding for an existing memory.
+
+        Args:
+            id: Memory ID.
+            compressed_embedding: TurboQuant-compressed bytes.
+
+        Returns:
+            True if updated, False if ID not found.
+        """
+        cursor = self.conn.execute(
+            "UPDATE memories SET compressed_embedding = ? WHERE id = ?",
+            (compressed_embedding, id),
+        )
+        self.conn.commit()
+        return cursor.rowcount > 0
+
+    def get_uncompressed_ids(self) -> list[str]:
+        """Get IDs of memories that lack compressed embeddings."""
+        rows = self.conn.execute(
+            "SELECT id FROM memories WHERE compressed_embedding IS NULL"
+        ).fetchall()
+        return [row["id"] for row in rows]
+
     def delete(self, id: str) -> bool:
         """Delete a memory by ID."""
         cursor = self.conn.execute("DELETE FROM memories WHERE id = ?", (id,))
@@ -227,13 +343,38 @@ class MemoryStorage:
                 by_project[row["project"]] = row["count"]
         
         db_size = self.db_path.stat().st_size if self.db_path.exists() else 0
+
+        # Compression stats
+        compressed_row = self.conn.execute(
+            "SELECT COUNT(*) as count FROM memories WHERE compressed_embedding IS NOT NULL"
+        ).fetchone()
+        compressed_count = compressed_row["count"] if compressed_row else 0
+
+        uncompressed_row = self.conn.execute(
+            "SELECT SUM(LENGTH(embedding)) as total FROM memories"
+        ).fetchone()
+        total_embedding_bytes = uncompressed_row["total"] or 0
+
+        compressed_bytes_row = self.conn.execute(
+            "SELECT SUM(LENGTH(compressed_embedding)) as total "
+            "FROM memories WHERE compressed_embedding IS NOT NULL"
+        ).fetchone()
+        total_compressed_bytes = compressed_bytes_row["total"] or 0
         
         return {
             "total_memories": total,
             "by_type": by_type,
             "by_project": by_project,
             "db_size_bytes": db_size,
-            "db_path": str(self.db_path)
+            "db_path": str(self.db_path),
+            "compressed_count": compressed_count,
+            "total_embedding_bytes": total_embedding_bytes,
+            "total_compressed_bytes": total_compressed_bytes,
+            "compression_ratio": (
+                round(total_embedding_bytes / total_compressed_bytes, 2)
+                if total_compressed_bytes > 0
+                else 0.0
+            ),
         }
     
     def _row_to_dict(self, row: sqlite3.Row) -> dict:

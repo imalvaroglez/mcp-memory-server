@@ -1,14 +1,21 @@
 """
-MCP Memory Server - Local persistent memory for IDE assistants.
+MCP Memory Server — Persistent memory for IDE code assistants.
 
-A Model Context Protocol server that provides memory tools for
-code assistants like Cursor, Windsurf, and Claude Code.
+Provides semantic search, local LLM reasoning (Gemma 2B),
+and TurboQuant-compressed vector storage.
 """
 
-__version__ = "0.1.0"
-__author__ = "Tailor Made"
+__version__ = "0.2.0"
 
-from mcp_memory.server import MCPServer
-from mcp_memory.memory import MemoryStore
+from .memory import Memory
+from .embeddings import embed, cosine_similarity
+from .quantization import TurboQuantCompressor, turbo_compress, turbo_decompress
 
-__all__ = ["MCPServer", "MemoryStore"]
+__all__ = [
+    "Memory",
+    "embed",
+    "cosine_similarity",
+    "TurboQuantCompressor",
+    "turbo_compress",
+    "turbo_decompress",
+]
