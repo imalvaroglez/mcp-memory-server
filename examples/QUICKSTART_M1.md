@@ -2,47 +2,40 @@
 
 This guide is optimized for your M1 Max with 32GB RAM. The server will use <300MB of that.
 
-## Native Installation (Recommended for Development)
+## Installation
 
 ```bash
-# Clone or copy the project
+# Clone
 cd ~/projects
-git clone <repo-url> mcp-memory-server
+git clone https://github.com/imalvaroglez/mcp-memory-server.git
 cd mcp-memory-server
 
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install in development mode
-pip install -e ".[dev]"
+# Install with Poetry
+poetry install
 
 # Verify installation
-mcp-memory-server info
-
-# Run the server
-mcp-memory-server serve
+poetry run mcp-memory-server info
 ```
 
 ## Testing the Server
 
 ```bash
-# In one terminal, run the server
-mcp-memory-server serve
+# In one terminal, run the server (MCP protocol over stdio)
+poetry run mcp-memory-server serve
 
-# In another terminal, test commands:
+# In another terminal, test CLI commands:
 
 # Store a memory
-mcp-memory-client store "Using PostgreSQL for this project" --project my-app --type decision
+poetry run mcp-memory-server store "Using PostgreSQL for this project" --project my-app --type decision
 
 # Search memories
-mcp-memory-client search "database" --project my-app
+poetry run mcp-memory-server search "database" --project my-app
 
 # List all memories
-mcp-memory-client list --project my-app
+poetry run mcp-memory-server list --project my-app
 
 # Show stats
-mcp-memory-client stats
+poetry run mcp-memory-server stats
 ```
 
 ## IDE Integration
@@ -66,7 +59,6 @@ Add to `~/.cursor/mcp_settings.json`:
 ```
 
 ### Claude Code
-
 Add to your MCP settings:
 
 ```json
@@ -115,7 +107,6 @@ podman run -i --rm \
 Your M1 Max has 32GB RAM. This server will use <1% of that.
 
 ## Memory Management
-
 The server stores memories in `~/.mcp-memory/memory.db` by default.
 
 ```bash
@@ -133,15 +124,14 @@ rm ~/.mcp-memory/memory.db
 
 ```bash
 # Run tests
-pytest
+poetry run pytest
 
 # Format code
-black src/
+poetry run black src/
 
 # Type check
-mypy src/
+poetry run mypy src/
 
 # Build distribution
-pip install build
-python -m build
+poetry build
 ```

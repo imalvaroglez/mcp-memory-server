@@ -67,14 +67,24 @@ podman run -d \
 # Add to your IDE's mcp_settings.json
 ```
 
-### Option 2: Native Python
+### Option 2: Poetry (Recommended for Development)
+
+```bash
+# Install with Poetry
+poetry install
+
+# Run
+poetry run mcp-memory-server
+```
+
+### Option 3: Native Python
 
 ```bash
 # Install
 pip install -e .
 
 # Run
-mcp-memory-server --port 3000
+mcp-memory-server
 ```
 
 ### IDE Configuration
@@ -192,21 +202,17 @@ Returns:
 
 ```bash
 # Clone
-git clone https://github.com/tailor-made/mcp-memory-server.git
+git clone https://github.com/imalvaroglez/mcp-memory-server.git
 cd mcp-memory-server
 
-# Create venv
-python -m venv .venv
-source .venv/bin/activate
-
-# Install deps
-pip install -e ".[dev]"
+# Install with Poetry
+poetry install
 
 # Run tests
-pytest
+poetry run pytest
 
 # Run server
-mcp-memory-server
+poetry run mcp-memory-server
 ```
 
 ### Project Structure
