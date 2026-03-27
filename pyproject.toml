@@ -3,7 +3,7 @@ name = "mcp-memory-server"
 version = "0.2.0"
 description = "Local MCP server for persistent IDE assistant memory with local LLM reasoning and TurboQuant compression"
 authors = ["Alvaro Gonzalez <alvaroglezz@hotmail.com>"]
-license = "MIT"
+license = "FSL-1.1-ALv2"
 readme = "README.md"
 homepage = "https://github.com/imalvaroglez/mcp-memory-server"
 repository = "https://github.com/imalvaroglez/mcp-memory-server"
@@ -11,7 +11,9 @@ keywords = ["mcp", "memory", "ide", "assistant", "local", "embeddings", "llm", "
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: Free For Educational Use",
+    "License :: Free For Home Use",
+    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

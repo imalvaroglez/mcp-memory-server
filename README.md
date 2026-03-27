@@ -267,7 +267,20 @@ mcp-memory-server/
 
 ## License
 
-MIT — Use freely, modify, distribute.
+**Functional Source License 1.1 (Apache 2.0 Future)**
+
+You can use, modify, and redistribute this software for any non-competing purpose. After 2 years, it automatically converts to Apache 2.0 (fully permissive).
+
+**What you can do:**
+- ✅ Internal use
+- ✅ Personal projects
+- ✅ Education and research
+- ✅ Professional services (consulting, integration)
+
+**What you can't do (for 2 years):**
+- ❌ Create competing products/services
+
+See [LICENSE](LICENSE) for full terms.
 
 ## Contributing
 
